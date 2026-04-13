@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+langchain
+langchain-openai
+langchain-community
+openai
+chromadb          # 벡터 DB (RAG용)
+kiwipiepy         # 한국어 형태소 분석
+sentence-transformers
+httpx
