@@ -51,3 +51,37 @@ def create_session(quiz_type: str, current_grade: Optional[int] = None) -> dict:
         "responses": [], 
         "completed": False,
     }
+
+def select_next_item(session:dict, items: list)->Optional[dict]:
+    # 현재 세션 상태에 기반하여 다음 문항 선택
+    # 홀수번째: 빈칸 채우기 문항
+    # 짝수번째: 의미 선택 문항
+    # 목표 난이도(D)에 가장 가까운 미출제 문항을 선택
+    question_number=session["L"]+1
+
+    if question_number > TOTAL_QUESTIONS:
+        return None
+    
+    if question_number%2==1:
+        target_type="fill_blank"
+    else:
+        target_type="meaning_choice"
+
+    used_ids=set(session["history"])
+    candidates=[
+        item for item in items
+        if item["id"] not in used_ids and item["typr"]==target_type
+    ]
+    if not candidates:
+        candidates=[
+            item for item in items
+            if item["id"] not in used_ids
+        ]
+
+    if not candidates:
+        return None
+    
+    target_d=session["D"]
+    candidates.sort(key=lambda x: abs(x["b"]-target_d))
+
+    return candidates[0]
