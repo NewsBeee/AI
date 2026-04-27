@@ -85,3 +85,90 @@ def select_next_item(session:dict, items: list)->Optional[dict]:
     candidates.sort(key=lambda x: abs(x["b"]-target_d))
 
     return candidates[0]
+
+def process_answer(session:dict, item:dict, selected_choice: int)->dict:
+    # 답변 처리+CAT 업데이트
+    is_correct=(selected_choice==item["answer"])
+
+    #D를 해당 문항의 실제 b값으로 갱신
+    session["D"]=item["b"]
+
+    session["L"]+=1
+    session["H"]+=item["b"]
+
+    session["history"].append(item["id"])
+    session["responses"].append({
+        "item_id": item["id"],
+        "word": item["word"],
+        "grade": item["grade"],
+        "type": item["type"],
+        "is_correct": is_correct,
+        "b": item["b"],
+    })
+
+    if is_correct:
+        session["R"]+=1
+        session["D"]=session["D"]+2/session["L"]
+    else:
+        session["D"]=session["D"]-2/session["L"]
+
+    result_response={
+        "is_correct": is_correct,
+        "question_number": session["L"],
+    }
+
+    #10문항 완료 시
+    if session["L"]>=TOTAL_QUESTIONS:
+        session["completed"]=True
+        result=compute_final_result(session)
+        result_response["completed"]=True
+        result_response["result"]=result
+    else:
+        result_response["completed"]=False
+        result_response["result"]=None
+    return result_response
+
+def compute_final_result(session:dict)->dict:
+    # 최종 결과 계산
+    """
+    B = H/L + ln(R/W)
+    예외: W=0이면 B = H/L + ln((R-0.5)/0.5)
+          R=0이면 B = H/L + ln(0.5/(W-0.5))
+    """
+    L=session["L"]
+    H=session["H"]
+    R=session["R"]
+    W=L-R
+
+    if W==0:
+        B=H/L+math.log((R-0.5)/0.5)
+    elif R==0:
+        B=H/L+math.log(0.5/(W-0.5))
+    else:
+        B=H/L+math.log(R/W)
+    
+    assigned_grade=estimate_grade(B)
+    # 승급 판정
+    promoted=False
+    if session["quiz_type"]=="upgrade" and session["current_grade"]:
+        current_logit=GRADE_LOGIT.get(session["current_grade"], 0.0)
+        if B>current_logit+0.5:
+            promoted=True
+    
+    by_grade={}
+    for resp in session["responses"]:
+        grade_key = f"{resp['grade']}등급"
+        if grade_key not in by_grade:
+            by_grade[grade_key] = {"출제": 0, "정답": 0}
+        by_grade[grade_key]["출제"] += 1
+        if resp["is_correct"]:
+            by_grade[grade_key]["정답"] += 1
+ 
+    return {
+        "estimated_theta": round(B, 2),
+        "assigned_grade": assigned_grade,
+        "total": L,
+        "correct": R,
+        "promoted": promoted,
+        "by_grade": by_grade,
+    }
