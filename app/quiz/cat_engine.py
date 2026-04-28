@@ -70,7 +70,7 @@ def select_next_item(session:dict, items: list)->Optional[dict]:
     used_ids=set(session["history"])
     candidates=[
         item for item in items
-        if item["id"] not in used_ids and item["typr"]==target_type
+        if item["id"] not in used_ids and item["type"]==target_type
     ]
     if not candidates:
         candidates=[
@@ -82,9 +82,9 @@ def select_next_item(session:dict, items: list)->Optional[dict]:
         return None
     
     target_d=session["D"]
-    candidates.sort(key=lambda x: abs(x["b"]-target_d))
-
-    return candidates[0]
+    candidates.sort(key=lambda x: abs(x["b"] - target_d))
+    top_n = candidates[:min(5, len(candidates))]
+    return random.choice(top_n)
 
 def process_answer(session:dict, item:dict, selected_choice: int)->dict:
     # 답변 처리+CAT 업데이트
