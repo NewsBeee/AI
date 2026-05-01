@@ -1,0 +1,19 @@
+문항 풀 로드 완료: 1335개
+   1등급-fill_blank: 56개
+   1등급-meaning_choice: 109개
+   2등급-fill_blank: 62개
+   2등급-meaning_choice: 106개
+   3등급-fill_blank: 64개
+   3등급-meaning_choice: 116개
+   4등급-fill_blank: 75개
+   4등급-meaning_choice: 119개
+   5등급-fill_blank: 74개
+   5등급-meaning_choice: 124개
+   6등급-fill_blank: 78개
+   6등급-meaning_choice: 133개
+   7등급-fill_blank: 82개
+   7등급-meaning_choice: 137개
+[embedder] Loading model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+INFO:     127.0.0.1:61159 - "POST /api/convert/summarize HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:61165 - "POST /api/convert/summarize HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61173 - "POST /api/convert/process HTTP/1.1" 200 OK
