@@ -4,7 +4,7 @@
 import pandas as pd
 from kiwipiepy import Kiwi
 
-CSV_PATH = "data/vocab_dictionary_v3.csv"
+from app.convert.config import CSV_PATH
 
 _KIWI_TAG_TO_POS: dict[str, str] = {
     "NNG": "명사", "NNP": "명사", "NNB": "명사",

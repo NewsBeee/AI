@@ -2,7 +2,9 @@
 OpenAI API를 사용해 기사 문장을 쉬운 어휘로 자연스럽게 리라이팅.
 """
 import os
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
+
+from app.convert.config import LLM_MODEL
 
 _client: OpenAI | None = None
 
@@ -62,12 +64,15 @@ def rewrite_article(
 
 【리라이팅】"""
 
-    response = _get_client().chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = _get_client().chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        return response.choices[0].message.content.strip()
+    except OpenAIError as e:
+        raise RuntimeError(f"rewrite_article OpenAI 오류: {e}") from e
 
 
 def rewrite_sentence(
@@ -98,9 +103,12 @@ def rewrite_sentence(
 원문: {sentence}
 결과:"""
 
-    response = _get_client().chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = _get_client().chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        return response.choices[0].message.content.strip()
+    except OpenAIError as e:
+        raise RuntimeError(f"rewrite_sentence OpenAI 오류: {e}") from e

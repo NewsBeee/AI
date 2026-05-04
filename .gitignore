@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 chroma_db/
 data/*.csv
+server_*.txt

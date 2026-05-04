@@ -2,7 +2,9 @@
 OpenAI API를 사용해 기사를 학습자 수준에 맞게 요약.
 """
 import os
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
+
+from app.convert.config import LLM_MODEL
 
 _client: OpenAI | None = None
 
@@ -44,12 +46,15 @@ def summarize_article(
 
 【요약】"""
 
-    response = _get_client().chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = _get_client().chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        return response.choices[0].message.content.strip()
+    except OpenAIError as e:
+        raise RuntimeError(f"summarize_article OpenAI 오류: {e}") from e
 
 
 def summarize_with_keywords(
@@ -81,11 +86,14 @@ def summarize_with_keywords(
 【기사】
 {text}"""
 
-    response = _get_client().chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
+    try:
+        response = _get_client().chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+    except OpenAIError as e:
+        raise RuntimeError(f"summarize_with_keywords OpenAI 오류: {e}") from e
 
     content = response.choices[0].message.content.strip()
     summary = ""

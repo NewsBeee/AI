@@ -1,10 +1,12 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.convert.tagger import tag_article, _get_kiwi, _load_vocab
 from app.convert.replacer import build_replacement_map
 from app.convert.rewriter import rewrite_article
-from app.convert.summarizer import summarize_article, summarize_with_keywords
+from app.convert.summarizer import summarize_with_keywords
 from app.convert.embedder import get_collection, get_model
 
 router = APIRouter(prefix="/api/convert", tags=["convert"])
@@ -32,17 +34,25 @@ class SummarizeRequest(BaseModel):
 
 @router.post("/process")
 async def process_article(req: ConvertRequest):
-    """
-    기사 변환 전체 파이프라인.
-    tag → replace → rewrite → summarize 순서로 실행.
-    """
+    """기사 변환 전체 파이프라인: tag → replace → rewrite → summarize"""
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text가 비어 있습니다.")
 
-    tagged = tag_article(req.text, min_level=req.min_word_level)
-    rmap = build_replacement_map(tagged, target_max_level=req.target_level)
-    rewritten = rewrite_article(req.text, rmap, target_level=req.target_level)
-    summary = summarize_with_keywords(rewritten, target_level=req.target_level)
+    try:
+        tagged = await asyncio.to_thread(
+            tag_article, req.text, req.min_word_level
+        )
+        rmap = await asyncio.to_thread(
+            build_replacement_map, tagged, req.target_level
+        )
+        rewritten = await asyncio.to_thread(
+            rewrite_article, req.text, rmap, req.target_level
+        )
+        summary = await asyncio.to_thread(
+            summarize_with_keywords, rewritten, None, req.target_level
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
     return {
         "success": True,
@@ -79,11 +89,13 @@ async def summarize(req: SummarizeRequest):
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text가 비어 있습니다.")
 
-    result = summarize_with_keywords(
-        req.text,
-        target_level=req.target_level,
-        max_sentences=req.max_sentences,
-    )
+    try:
+        result = await asyncio.to_thread(
+            summarize_with_keywords, req.text, None, req.target_level, req.max_sentences
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
     return {
         "success": True,
         "summary": result["summary"],

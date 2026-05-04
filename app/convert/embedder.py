@@ -6,10 +6,7 @@ import pandas as pd
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-CHROMA_PATH = "chroma_db"
-COLLECTION_NAME = "vocab_embeddings"
-MODEL_NAME = "jhgan/ko-sroberta-multitask"
-CSV_PATH = "data/vocab_dictionary_v3.csv"
+from app.convert.config import EMBED_MODEL_NAME, CHROMA_PATH, COLLECTION_NAME, CSV_PATH
 
 _client: chromadb.PersistentClient | None = None
 _collection = None
@@ -36,8 +33,8 @@ def get_collection():
 def get_model() -> SentenceTransformer:
     global _model
     if _model is None:
-        print(f"[embedder] Loading model: {MODEL_NAME}")
-        _model = SentenceTransformer(MODEL_NAME)
+        print(f"[embedder] Loading model: {EMBED_MODEL_NAME}")
+        _model = SentenceTransformer(EMBED_MODEL_NAME)
     return _model
 
 
