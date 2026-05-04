@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from app.convert.embedder import build_embeddings; build_embeddings\\(\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import sys; data=sys.stdin.buffer.read\\(\\); print\\(data.decode\\('utf-8', errors='replace'\\)\\)\")",
+      "Bash(python -c \"import sys; print\\(sys.stdin.buffer.read\\(\\).decode\\('cp949', errors='replace'\\)\\)\")"
+    ]
+  }
+}

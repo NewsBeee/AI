@@ -5,12 +5,14 @@ from contextlib import asynccontextmanager
 
 from app.quiz.router import router as quiz_router
 from app.quiz.item_pool import load_item_pool
+from app.convert.router import router as convert_router, preload_models
 
 load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app):
     load_item_pool()
+    preload_models()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -26,6 +28,7 @@ app.add_middleware(
 
 # 라우터 연결
 app.include_router(quiz_router)
+app.include_router(convert_router)
 
 # 기본 라우트 (테스트용)
 @app.get("/")
