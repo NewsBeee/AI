@@ -4,14 +4,15 @@ from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
 from app.quiz.router import router as quiz_router
-from app.quiz.item_pool import load_item_pool
+from app.database import init_db, close_db
 
 load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app):
-    load_item_pool()
+    await init_db()
     yield
+    await close_db()
 
 app = FastAPI(lifespan=lifespan)
 
