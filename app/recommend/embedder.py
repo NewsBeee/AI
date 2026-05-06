@@ -30,7 +30,6 @@ def embed_article(article: dict) -> np.ndarray:
     parts = [
         article.get("title", ""),
         article.get("summary", ""),
-        article.get("content", ""),
     ]
     text = " ".join(p for p in parts if p).strip()
     if not text:
@@ -44,7 +43,6 @@ def embed_articles(articles: list[dict], batch_size: int = 64) -> np.ndarray:
         parts = [
             article.get("title", ""),
             article.get("summary", ""),
-            article.get("content", ""),
         ]
         text = " ".join(p for p in parts if p).strip()
         texts.append(text if text else article.get("title", ""))
