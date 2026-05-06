@@ -28,7 +28,6 @@ def extract_search_keywords(
 
 async def get_recommendations(
     reading_history: list[dict],
-    user_grade: int,
     top_n: int = RECOMMEND_COUNT,
 ) -> list[dict]:
     if not reading_history:
@@ -62,7 +61,6 @@ async def get_recommendations(
     profile = compute_interest_profile(ordered_embeddings, read_times)
     print("[service] 관심사 프로필 계산 완료")
 
-
     search_keywords = extract_search_keywords(reading_history)
     print(f"[service] 검색 키워드: {search_keywords}")
 
@@ -74,6 +72,7 @@ async def get_recommendations(
         print("[service] 후보 기사가 없습니다.")
         return []
 
+    # 후보 기사 임베딩 
     print(f"[service] 후보 {len(candidates)}건 임베딩 중...")
     candidate_embeddings = embed_articles(candidates)
 
@@ -84,6 +83,7 @@ async def get_recommendations(
         top_n=top_n,
     )
 
+    # 응답 정리
     result = []
     for rec in recommendations:
         result.append({

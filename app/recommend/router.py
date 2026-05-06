@@ -19,7 +19,6 @@ class ReadingHistoryItem(BaseModel):
 
 class RecommendRequest(BaseModel):
     user_id: str
-    grade: int
     history: List[ReadingHistoryItem]
 
 
@@ -45,7 +44,6 @@ async def recommend_articles(req: RecommendRequest):
 
         recommendations = await get_recommendations(
             reading_history=history_dicts,
-            user_grade=req.grade,
         )
 
         return RecommendResponse(
