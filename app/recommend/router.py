@@ -1,3 +1,4 @@
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -10,22 +11,21 @@ class ReadingHistoryItem(BaseModel):
     article_id: int
     title: str
     link: str
-    category: str
-    keywords: list[str] = []
-    embedding: list[float] | None = None
+    category: str = ""
+    keywords: List[str] = []
+    embedding: Optional[List[float]] = None
     read_at: str
 
 
 class RecommendRequest(BaseModel):
     user_id: str
     grade: int
-    history: list[ReadingHistoryItem]
+    history: List[ReadingHistoryItem]
 
 
 class RecommendedArticle(BaseModel):
     title: str
     link: str
-    category: str
     summary: str
     similarity_score: float
     published_at: str
@@ -34,7 +34,8 @@ class RecommendedArticle(BaseModel):
 class RecommendResponse(BaseModel):
     user_id: str
     count: int
-    recommendations: list[RecommendedArticle]
+    recommendations: List[RecommendedArticle]
+
 
 
 @router.post("/", response_model=RecommendResponse)
