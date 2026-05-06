@@ -4,20 +4,20 @@ from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
 from app.quiz.router import router as quiz_router
-from app.quiz.item_pool import load_item_pool
+from app.database import init_db, close_db
 from app.convert.router import router as convert_router, preload_models
 
 load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app):
-    load_item_pool()
+    await init_db()
     preload_models()
     yield
+    await close_db()
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS 설정 (프론트 연결용)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -26,11 +26,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 라우터 연결
 app.include_router(quiz_router)
 app.include_router(convert_router)
 
-# 기본 라우트 (테스트용)
 @app.get("/")
 def root():
     return {"message": "NewsBee AI Server Running"}
