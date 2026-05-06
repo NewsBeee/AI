@@ -1,6 +1,5 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
-
 from app.recommend.config import EMBED_MODEL_NAME
 
 _model: SentenceTransformer | None = None

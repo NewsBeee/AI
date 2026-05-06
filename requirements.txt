@@ -10,3 +10,4 @@ kiwipiepy
 sentence-transformers
 httpx
 aiomysql
+pandas
