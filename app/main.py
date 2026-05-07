@@ -6,14 +6,18 @@ from contextlib import asynccontextmanager
 from app.quiz.router import router as quiz_router
 from app.quiz.item_pool import load_item_pool
 from app.convert.router import router as convert_router, preload_models
+from app.convert.embedder import build_embeddings
+from app.database import close_pool
 
 load_dotenv()
 
 @asynccontextmanager
-async def lifespan(app):
+async def lifespan(_app):
     load_item_pool()
-    preload_models()
+    await preload_models()
+    await build_embeddings()
     yield
+    await close_pool()
 
 app = FastAPI(lifespan=lifespan)
 

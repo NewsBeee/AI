@@ -1,10 +1,11 @@
 """
 기사 텍스트에서 형태소 분석(kiwipiepy)으로 단어를 추출하고 어휘 등급을 태깅.
 """
-import pandas as pd
+import aiomysql
 from kiwipiepy import Kiwi
 
-from app.convert.config import CSV_PATH
+from app.convert.config import VOCAB_TABLE
+from app.database import get_pool
 
 _KIWI_TAG_TO_POS: dict[str, str] = {
     "NNG": "명사", "NNP": "명사", "NNB": "명사",
@@ -29,22 +30,29 @@ _vocab_dict: dict[str, list[dict]] | None = None
 _kiwi: Kiwi | None = None
 
 
-def _load_vocab() -> dict[str, list[dict]]:
+async def _load_vocab() -> dict[str, list[dict]]:
     """word → 엔트리 리스트(level 오름차순) 최초 1회 로딩"""
     global _vocab_dict
     if _vocab_dict is not None:
         return _vocab_dict
 
-    df = pd.read_csv(CSV_PATH).fillna("")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(
+                f"SELECT word, level, pos, origin, meaning, source FROM {VOCAB_TABLE}"
+            )
+            rows = await cur.fetchall()
+
     vocab: dict[str, list[dict]] = {}
-    for _, row in df.iterrows():
+    for row in rows:
         word = str(row["word"]).strip()
         entry = {
             "level": int(row["level"]) if str(row["level"]).isdigit() else 0,
-            "pos": str(row.get("pos", "")),
-            "origin": str(row.get("origin", "")),
-            "meaning": str(row.get("meaning", "")),
-            "source": str(row.get("source", "")),
+            "pos": str(row.get("pos") or ""),
+            "origin": str(row.get("origin") or ""),
+            "meaning": str(row.get("meaning") or ""),
+            "source": str(row.get("source") or ""),
         }
         vocab.setdefault(word, []).append(entry)
 
@@ -104,7 +112,9 @@ def tag_article(text: str, min_level: int = 4) -> list[dict]:
     Returns:
         list of {word, level, pos, meaning, sentence_index, sentence}
     """
-    vocab = _load_vocab()
+    if _vocab_dict is None:
+        raise RuntimeError("vocab이 초기화되지 않았습니다. 서버 시작 시 await _load_vocab()을 호출하세요.")
+    vocab = _vocab_dict
     kiwi = _get_kiwi()
 
     sentences = kiwi.split_into_sents(text)
