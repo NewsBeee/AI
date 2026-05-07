@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
 from app.quiz.router import router as quiz_router
-from app.quiz.item_pool import load_item_pool
 from app.database import init_db, close_db
 from app.convert.router import router as convert_router, preload_models
 from app.convert.embedder import build_embeddings
@@ -14,7 +13,6 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(_app):
     await init_db()
-    load_item_pool()
     await preload_models()
     await build_embeddings()
     yield

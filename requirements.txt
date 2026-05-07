@@ -10,3 +10,5 @@ kiwipiepy
 sentence-transformers
 httpx
 aiomysql
+beautifulsoup4
+lxml
