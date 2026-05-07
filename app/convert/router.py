@@ -12,10 +12,10 @@ from app.convert.embedder import get_collection, get_model
 router = APIRouter(prefix="/api/convert", tags=["convert"])
 
 
-def preload_models() -> None:
+async def preload_models() -> None:
     """서버 시작 시 무거운 모델을 미리 로딩해 첫 요청 지연 방지."""
     _get_kiwi()
-    _load_vocab()
+    await _load_vocab()
     get_model()
     get_collection()
 

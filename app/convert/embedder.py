@@ -1,12 +1,13 @@
 """
-CSV 어휘 사전을 읽어 sentence-transformers로 임베딩 후 ChromaDB에 저장.
+RDS vocab_master 테이블에서 어휘 데이터를 읽어 sentence-transformers로 임베딩 후 ChromaDB에 저장.
 최초 1회 또는 force_rebuild=True 시에만 실행.
 """
-import pandas as pd
+import aiomysql
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from app.convert.config import EMBED_MODEL_NAME, CHROMA_PATH, COLLECTION_NAME, CSV_PATH
+from app.convert.config import EMBED_MODEL_NAME, CHROMA_PATH, COLLECTION_NAME, VOCAB_TABLE
+from app.database import get_pool
 
 _client = None
 _collection = None
@@ -38,19 +39,25 @@ def get_model() -> SentenceTransformer:
     return _model
 
 
-def build_embeddings(force_rebuild: bool = False) -> None:
+async def build_embeddings(force_rebuild: bool = False) -> None:
     collection = get_collection()
 
     if collection.count() > 0 and not force_rebuild:
         print(f"[embedder] {collection.count()} entries already exist. Skipping rebuild.")
         return
 
-    df = pd.read_csv(CSV_PATH)
-    df = df.dropna(subset=["word", "meaning"]).reset_index(drop=True)
-    print(f"[embedder] Loaded {len(df)} vocab entries")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(
+                f"SELECT id, word, level, pos, origin, meaning, source "
+                f"FROM {VOCAB_TABLE} WHERE word IS NOT NULL AND meaning IS NOT NULL"
+            )
+            rows = await cur.fetchall()
 
-    # word + meaning을 합쳐서 임베딩 (의미 기반 유사도 향상)
-    documents = (df["word"].astype(str) + ": " + df["meaning"].astype(str)).tolist()
+    print(f"[embedder] Loaded {len(rows)} vocab entries from DB")
+
+    documents = [f"{row['word']}: {row['meaning']}" for row in rows]
 
     model = get_model()
     print("[embedder] Generating embeddings (this may take a few minutes)...")
@@ -62,28 +69,26 @@ def build_embeddings(force_rebuild: bool = False) -> None:
     )
 
     batch_size = 5000
-    for start in range(0, len(df), batch_size):
-        batch_df = df.iloc[start : start + batch_size].copy()
-        batch_df = batch_df.fillna("")
-
+    for start in range(0, len(rows), batch_size):
+        batch = rows[start: start + batch_size]
         metadatas = [
             {
                 "word": str(row["word"]),
                 "level": int(row["level"]) if str(row["level"]).isdigit() else 0,
-                "pos": str(row.get("pos", "")),
-                "origin": str(row.get("origin", "")),
+                "pos": str(row["pos"] or ""),
+                "origin": str(row["origin"] or ""),
                 "meaning": str(row["meaning"]),
-                "source": str(row.get("source", "")),
+                "source": str(row["source"] or ""),
             }
-            for _, row in batch_df.iterrows()
+            for row in batch
         ]
 
         collection.upsert(
-            ids=[str(i) for i in batch_df.index],
-            embeddings=embeddings[start : start + batch_size].tolist(),
-            documents=documents[start : start + batch_size],
+            ids=[str(row["id"]) for row in batch],
+            embeddings=embeddings[start: start + batch_size].tolist(),
+            documents=documents[start: start + batch_size],
             metadatas=metadatas,
         )
-        print(f"[embedder] Upserted {min(start + batch_size, len(df))}/{len(df)}")
+        print(f"[embedder] Upserted {min(start + batch_size, len(rows))}/{len(rows)}")
 
     print("[embedder] Build complete.")

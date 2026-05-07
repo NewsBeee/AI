@@ -1,5 +1,5 @@
 EMBED_MODEL_NAME = "jhgan/ko-sroberta-multitask"
 CHROMA_PATH = "chroma_db"
 COLLECTION_NAME = "vocab_embeddings"
-CSV_PATH = "data/vocab_dictionary_v3.csv"
 LLM_MODEL = "gpt-4o-mini"
+VOCAB_TABLE = "vocab_master"
