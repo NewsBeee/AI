@@ -12,3 +12,4 @@ httpx
 aiomysql
 beautifulsoup4
 lxml
+pandas

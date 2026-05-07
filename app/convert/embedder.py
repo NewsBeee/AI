@@ -9,12 +9,12 @@ from sentence_transformers import SentenceTransformer
 from app.convert.config import EMBED_MODEL_NAME, CHROMA_PATH, COLLECTION_NAME, VOCAB_TABLE
 from app.database import get_pool
 
-_client: chromadb.PersistentClient | None = None
+_client = None
 _collection = None
 _model: SentenceTransformer | None = None
 
 
-def get_client() -> chromadb.PersistentClient:
+def get_client():
     global _client
     if _client is None:
         _client = chromadb.PersistentClient(path=CHROMA_PATH)

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from app.quiz.router import router as quiz_router
 from app.database import init_db, close_db
 from app.convert.router import router as convert_router, preload_models
+from app.recommend.router import router as recommend_router
 from app.convert.embedder import build_embeddings
 
 load_dotenv()
@@ -30,6 +31,7 @@ app.add_middleware(
 
 app.include_router(quiz_router)
 app.include_router(convert_router)
+app.include_router(recommend_router)
 
 @app.get("/")
 def root():
