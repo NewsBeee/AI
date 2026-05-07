@@ -18,7 +18,7 @@ class ReadingHistoryItem(BaseModel):
 
 
 class RecommendRequest(BaseModel):
-    user_id: str
+    user_id: int
     history: List[ReadingHistoryItem]
 
 
@@ -31,7 +31,7 @@ class RecommendedArticle(BaseModel):
 
 
 class RecommendResponse(BaseModel):
-    user_id: str
+    user_id: int
     count: int
     recommendations: List[RecommendedArticle]
 
