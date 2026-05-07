@@ -7,24 +7,28 @@ import aiomysql
 _pool: aiomysql.Pool | None = None
 
 
-async def get_pool() -> aiomysql.Pool:
+async def init_db() -> None:
     global _pool
+    _pool = await aiomysql.create_pool(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        user=os.getenv("DB_USER", ""),
+        password=os.getenv("DB_PASSWORD", ""),
+        db=os.getenv("DB_NAME", ""),
+        charset="utf8mb4",
+        autocommit=True,
+        minsize=2,
+        maxsize=10,
+    )
+
+
+def get_pool() -> aiomysql.Pool:
     if _pool is None:
-        _pool = await aiomysql.create_pool(
-            host=os.getenv("DB_HOST", "localhost"),
-            port=int(os.getenv("DB_PORT", "3306")),
-            user=os.getenv("DB_USER", ""),
-            password=os.getenv("DB_PASSWORD", ""),
-            db=os.getenv("DB_NAME", ""),
-            charset="utf8mb4",
-            autocommit=True,
-            minsize=1,
-            maxsize=5,
-        )
+        raise RuntimeError("DB 풀이 초기화되지 않았습니다.")
     return _pool
 
 
-async def close_pool() -> None:
+async def close_db() -> None:
     global _pool
     if _pool is not None:
         _pool.close()

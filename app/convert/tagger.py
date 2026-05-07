@@ -36,7 +36,7 @@ async def _load_vocab() -> dict[str, list[dict]]:
     if _vocab_dict is not None:
         return _vocab_dict
 
-    pool = await get_pool()
+    pool = get_pool()
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(
