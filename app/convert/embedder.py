@@ -50,7 +50,7 @@ async def build_embeddings(force_rebuild: bool = False) -> None:
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(
-                f"SELECT id, word, level, pos, origin, meaning, source "
+                f"SELECT vocab_id, word, level, pos, origin, meaning, source "
                 f"FROM {VOCAB_TABLE} WHERE word IS NOT NULL AND meaning IS NOT NULL"
             )
             rows = await cur.fetchall()
@@ -84,7 +84,7 @@ async def build_embeddings(force_rebuild: bool = False) -> None:
         ]
 
         collection.upsert(
-            ids=[str(row["id"]) for row in batch],
+            ids=[str(row["vocab_id"]) for row in batch],
             embeddings=embeddings[start: start + batch_size].tolist(),
             documents=documents[start: start + batch_size],
             metadatas=metadatas,
