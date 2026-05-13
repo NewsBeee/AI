@@ -46,7 +46,7 @@ async def build_embeddings(force_rebuild: bool = False) -> None:
         print(f"[embedder] {collection.count()} entries already exist. Skipping rebuild.")
         return
 
-    pool = await get_pool()
+    pool = get_pool()
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(
