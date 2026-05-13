@@ -5,3 +5,4 @@ __pycache__/
 chroma_db/
 data/*.csv
 server_*.txt
+*.pem

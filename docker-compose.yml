@@ -1,0 +1,35 @@
+services:
+  ai-server:
+    build:
+      context: ./ai  # AI 서버 디렉토리 경로로 수정
+      dockerfile: Dockerfile
+    container_name: newsbee-ai
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./ai/.env  # AI 서버 .env 경로로 수정
+    volumes:
+      - ./ai/chroma_db:/app/chroma_db
+      - ./ai/data:/app/data
+    networks:
+      - newsbee-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend  # 백엔드 디렉토리 경로로 수정
+      dockerfile: Dockerfile
+    container_name: newsbee-backend
+    ports:
+      - "8080:8080"  # 백엔드 포트로 수정
+    env_file:
+      - ./backend/.env  # 백엔드 .env 경로로 수정
+    networks:
+      - newsbee-network
+    restart: unless-stopped
+    depends_on:
+      - ai-server
+
+networks:
+  newsbee-network:
+    driver: bridge
