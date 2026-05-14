@@ -27,6 +27,7 @@ class ConvertRequest(BaseModel):
     url: str | None = None
     target_level: int = 3    # 목표 어휘 등급 (대체어·리라이팅·요약 공통)
     min_word_level: int = 4  # 이 등급 이상인 단어를 어려운 단어로 태깅
+    max_sentences: int = 5
 
 
 class SummarizeRequest(BaseModel):
@@ -63,7 +64,7 @@ async def process_article(req: ConvertRequest):
             rewrite_article, text, rmap, req.target_level
         )
         summary = await asyncio.to_thread(
-            summarize_with_keywords, rewritten, None, req.target_level
+            summarize_with_keywords, rewritten, None, req.target_level, req.max_sentences
         )
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -110,8 +111,4 @@ async def summarize(req: SummarizeRequest):
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    return {
-        "success": True,
-        "summary": result["summary"],
-        "keywords": result["keywords"],
-    }
+    return {"data": result["summary"]}
