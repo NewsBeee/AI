@@ -2,16 +2,16 @@
 RDS vocab_master 테이블에서 어휘 데이터를 읽어 sentence-transformers로 임베딩 후 ChromaDB에 저장.
 최초 1회 또는 force_rebuild=True 시에만 실행.
 """
+
 import aiomysql
 import chromadb
-from sentence_transformers import SentenceTransformer
 
-from app.convert.config import EMBED_MODEL_NAME, CHROMA_PATH, COLLECTION_NAME, VOCAB_TABLE
+from app.core.embedder import get_model
+from app.convert.config import CHROMA_PATH, COLLECTION_NAME, VOCAB_TABLE
 from app.database import get_pool
 
 _client = None
 _collection = None
-_model: SentenceTransformer | None = None
 
 
 def get_client():
@@ -29,14 +29,6 @@ def get_collection():
             metadata={"hnsw:space": "cosine"},
         )
     return _collection
-
-
-def get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        print(f"[embedder] Loading model: {EMBED_MODEL_NAME}")
-        _model = SentenceTransformer(EMBED_MODEL_NAME)
-    return _model
 
 
 async def build_embeddings(force_rebuild: bool = False) -> None:
@@ -69,6 +61,7 @@ async def build_embeddings(force_rebuild: bool = False) -> None:
     )
 
     batch_size = 5000
+
     for start in range(0, len(rows), batch_size):
         batch = rows[start: start + batch_size]
         metadatas = [
@@ -89,6 +82,7 @@ async def build_embeddings(force_rebuild: bool = False) -> None:
             documents=documents[start: start + batch_size],
             metadatas=metadatas,
         )
+
         print(f"[embedder] Upserted {min(start + batch_size, len(rows))}/{len(rows)}")
 
     print("[embedder] Build complete.")
