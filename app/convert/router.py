@@ -56,9 +56,8 @@ async def process_article(req: ConvertRequest):
     try:
         tagged = await asyncio.to_thread(tag_article, text, req.min_word_level)
         rmap = await asyncio.to_thread(build_replacement_map, tagged, req.target_level)
-        rewritten, summary, category = await asyncio.gather(
+        rewritten, category = await asyncio.gather(
             asyncio.to_thread(rewrite_article, text, rmap, req.target_level),
-            asyncio.to_thread(summarize_with_keywords, text, None, req.target_level, 5),
             asyncio.to_thread(classify_category, text),
         )
     except RuntimeError as e:
@@ -69,8 +68,6 @@ async def process_article(req: ConvertRequest):
         "original": text,
         "rewritten": rewritten,
         "category": category,
-        "summary": summary["summary"],
-        "keywords": summary["keywords"],
         "tagged_words": [
             {
                 "word": t["word"],
