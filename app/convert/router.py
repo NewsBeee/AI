@@ -9,6 +9,7 @@ from app.convert.tagger import tag_article, _get_kiwi, _load_vocab
 from app.convert.replacer import build_replacement_map
 from app.convert.rewriter import rewrite_article
 from app.convert.summarizer import summarize_with_keywords
+from app.convert.categorizer import classify_category
 from app.convert.embedder import get_collection, get_model
 
 router = APIRouter(prefix="/api/convert", tags=["convert"])
@@ -53,15 +54,12 @@ async def process_article(req: ConvertRequest):
         raise HTTPException(status_code=400, detail="text 또는 url 중 하나는 필수입니다.")
 
     try:
-        tagged = await asyncio.to_thread(
-            tag_article, text, req.min_word_level
-        )
-        rmap = await asyncio.to_thread(
-            build_replacement_map, tagged, req.target_level
-        )
-        rewritten, summary = await asyncio.gather(
+        tagged = await asyncio.to_thread(tag_article, text, req.min_word_level)
+        rmap = await asyncio.to_thread(build_replacement_map, tagged, req.target_level)
+        rewritten, summary, category = await asyncio.gather(
             asyncio.to_thread(rewrite_article, text, rmap, req.target_level),
             asyncio.to_thread(summarize_with_keywords, text, None, req.target_level, 5),
+            asyncio.to_thread(classify_category, text),
         )
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -70,6 +68,7 @@ async def process_article(req: ConvertRequest):
         "success": True,
         "original": text,
         "rewritten": rewritten,
+        "category": category,
         "summary": summary["summary"],
         "keywords": summary["keywords"],
         "tagged_words": [
