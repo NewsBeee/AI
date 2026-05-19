@@ -16,30 +16,18 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def summarize_article(
-    text: str,
-    target_level: int = 3,
-    max_sentences: int = 5,
-) -> str:
-    """
-    기사를 학습자 수준에 맞게 요약.
+def _summarize_raw(text: str, max_sentences: int, keywords: list[str] | None = None) -> str:
+    """1단계: 원문에서 핵심 내용 추출 (어휘 수준 무관)."""
+    keyword_hint = ""
+    if keywords:
+        keyword_hint = f"\n- 다음 핵심 단어를 요약에 자연스럽게 포함하세요: {', '.join(keywords)}"
 
-    Args:
-        text: 기사 원문 또는 리라이팅된 본문
-        target_level: 목표 어휘 등급 (기본 3등급 이하)
-        max_sentences: 요약 최대 문장 수
-
-    Returns:
-        요약 텍스트
-    """
-    prompt = f"""다음 기사를 초등학교 고학년~중학생이 이해할 수 있도록 쉽게 요약해주세요.
+    prompt = f"""다음 기사의 핵심 내용을 {max_sentences}문장 이내로 요약해주세요.
 
 【조건】
-- {max_sentences}문장 이내의 자연스러운 문단으로 작성하세요.
-- 어휘 {target_level}등급 이하의 쉬운 표현을 사용하세요.
-- 기사의 핵심 내용(누가, 무엇을, 왜)을 담아주세요.
-- 번호, 불릿 포인트 없이 흐르는 문장으로 작성하세요.
-- 요약문만 출력하고 설명은 쓰지 마세요.
+- 누가, 무엇을, 왜/어떻게를 중심으로 핵심 사실만 담으세요.
+- 번호, 불릿 포인트 없이 자연스러운 문단으로 작성하세요.
+- 요약문만 출력하고 설명은 쓰지 마세요.{keyword_hint}
 
 【기사】
 {text}
@@ -54,7 +42,56 @@ def summarize_article(
         )
         return response.choices[0].message.content.strip()
     except OpenAIError as e:
-        raise RuntimeError(f"summarize_article OpenAI 오류: {e}") from e
+        raise RuntimeError(f"_summarize_raw OpenAI 오류: {e}") from e
+
+
+def _simplify_and_extract(raw_summary: str, target_level: int) -> dict:
+    """2단계: 요약문을 target_level 이하 어휘로 변환하고 핵심 어휘 추출."""
+    prompt = f"""다음 요약문에서 어휘 {target_level}등급을 초과하는 어려운 단어만 골라 쉬운 표현으로 교체하고, 핵심 어휘도 추출해주세요.
+
+【조건】
+- 원문 표현을 최대한 유지하고, 꼭 필요한 어려운 단어만 선택적으로 교체하세요.
+- 쉬운 단어·고유명사·숫자·날짜는 그대로 두세요.
+- 문장 구조와 문장 수를 바꾸지 마세요.
+- 번호, 불릿 포인트 없이 자연스러운 문단으로 작성하세요.
+- 핵심 어휘: 요약 이해에 중요한 단어 5개를 쉼표로 구분해 나열하세요.
+
+【출력 형식】(이 형식 그대로 출력)
+요약: <변환된 요약문>
+핵심어휘: <단어1>, <단어2>, <단어3>, <단어4>, <단어5>
+
+【요약문】
+{raw_summary}"""
+
+    try:
+        response = _get_client().chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+    except OpenAIError as e:
+        raise RuntimeError(f"_simplify_and_extract OpenAI 오류: {e}") from e
+
+    content = response.choices[0].message.content.strip()
+    summary = ""
+    keywords: list[str] = []
+
+    for line in content.splitlines():
+        if line.startswith("요약:"):
+            summary = line[len("요약:"):].strip()
+        elif line.startswith("핵심어휘:"):
+            keywords = [k.strip() for k in line[len("핵심어휘:"):].split(",")]
+
+    return {"summary": summary or content, "keywords": keywords}
+
+
+def summarize_article(
+    text: str,
+    target_level: int = 3,
+    max_sentences: int = 5,
+) -> str:
+    raw = _summarize_raw(text, max_sentences)
+    return _simplify_and_extract(raw, target_level)["summary"]
 
 
 def summarize_with_keywords(
@@ -64,45 +101,10 @@ def summarize_with_keywords(
     max_sentences: int = 5,
 ) -> dict:
     """
-    요약 + 핵심 어휘 목록 함께 반환.
+    1단계 원문 요약 → 2단계 어휘 수준 변환 후 핵심 어휘와 함께 반환.
 
     Returns:
         {"summary": str, "keywords": list[str]}
     """
-    keyword_hint = ""
-    if keywords:
-        keyword_hint = f"\n- 다음 핵심 어휘를 요약에 자연스럽게 포함하세요: {', '.join(keywords)}"
-
-    prompt = f"""다음 기사를 초등학교 고학년~중학생이 이해할 수 있도록 쉽게 요약하고, 핵심 어휘도 추출해주세요.
-
-【조건】
-- 요약: {max_sentences}문장 이내, 어휘 {target_level}등급 이하의 쉬운 표현{keyword_hint}
-- 핵심 어휘: 기사 이해에 중요한 단어 5개를 쉼표로 구분해 나열
-
-【출력 형식】(이 형식 그대로 출력)
-요약: <요약문>
-핵심어휘: <단어1>, <단어2>, <단어3>, <단어4>, <단어5>
-
-【기사】
-{text}"""
-
-    try:
-        response = _get_client().chat.completions.create(
-            model=LLM_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-    except OpenAIError as e:
-        raise RuntimeError(f"summarize_with_keywords OpenAI 오류: {e}") from e
-
-    content = response.choices[0].message.content.strip()
-    summary = ""
-    extracted_keywords: list[str] = []
-
-    for line in content.splitlines():
-        if line.startswith("요약:"):
-            summary = line[len("요약:"):].strip()
-        elif line.startswith("핵심어휘:"):
-            extracted_keywords = [k.strip() for k in line[len("핵심어휘:"):].split(",")]
-
-    return {"summary": summary or content, "keywords": extracted_keywords}
+    raw = _summarize_raw(text, max_sentences, keywords)
+    return _simplify_and_extract(raw, target_level)

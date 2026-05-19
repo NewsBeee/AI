@@ -13,3 +13,5 @@ aiomysql
 beautifulsoup4
 lxml
 pandas
+bert-score
+rouge-score

@@ -78,7 +78,6 @@ async def process_article(req: ConvertRequest):
             for t in tagged
             if (rep := rmap.get(t["word"], {}).get("best_replacement"))
             and rep != t["word"]
-            and rep in rewritten
         ],
         "replacement_map": {
             word: {
