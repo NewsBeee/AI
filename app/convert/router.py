@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -7,7 +8,7 @@ from pydantic import BaseModel
 from app.convert.crawler import fetch_article_text
 from app.convert.tagger import tag_article, _get_kiwi, _load_vocab
 from app.convert.replacer import build_replacement_map
-from app.convert.rewriter import rewrite_article
+from app.convert.rewriter import build_convert_article_markdown, rewrite_and_summarize
 from app.convert.summarizer import summarize_with_keywords
 from app.convert.categorizer import classify_category
 from app.convert.embedder import get_collection, get_model
@@ -54,19 +55,34 @@ async def process_article(req: ConvertRequest):
         raise HTTPException(status_code=400, detail="text 또는 url 중 하나는 필수입니다.")
 
     try:
+        t0 = time.perf_counter()
+
         tagged = await asyncio.to_thread(tag_article, text, req.min_word_level)
+        t1 = time.perf_counter()
+        print(f"[TIMING] tag_article: {t1 - t0:.2f}s  ({len(tagged)} words tagged)")
+
         rmap = await asyncio.to_thread(build_replacement_map, tagged, req.target_level)
-        rewritten, category = await asyncio.gather(
-            asyncio.to_thread(rewrite_article, text, rmap, req.target_level),
+        t2 = time.perf_counter()
+        print(f"[TIMING] build_replacement_map: {t2 - t1:.2f}s  ({len(rmap)} words in rmap)")
+
+        rewrite_result, category = await asyncio.gather(
+            asyncio.to_thread(rewrite_and_summarize, text, rmap, req.target_level),
             asyncio.to_thread(classify_category, text),
         )
+        t3 = time.perf_counter()
+        print(f"[TIMING] rewrite_and_summarize: {t3 - t2:.2f}s")
+        print(f"[TIMING] total: {t3 - t0:.2f}s")
+
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
     return {
         "success": True,
         "original": text,
-        "rewritten": rewritten,
+        "rewritten": rewrite_result.get("convert_article")
+        or build_convert_article_markdown(rewrite_result["rewritten"], rmap),
+        "summary": rewrite_result["summary"],
+        "keywords": rewrite_result["keywords"],
         "category": category,
         "tagged_words": [
             {
