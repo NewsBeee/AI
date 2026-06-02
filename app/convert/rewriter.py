@@ -130,14 +130,12 @@ def rewrite_and_summarize(
 
     prompt = f"""다음 기사를 두 가지 작업으로 처리해주세요.
 
-【작업 1: 리라이팅】
-초등학교 고학년~중학생이 이해할 수 있도록 쉬운 어휘로 자연스럽게 다시 쓰세요.
+【작업 1: 리라이팅 + 변환 표시】
+초등학교 고학년~중학생이 이해할 수 있도록 쉬운 어휘로 자연스럽게 다시 쓰되,
+원문보다 쉽게 바꾼 단어와 표현만 그 자리에서 마크다운 굵게(**표시**) 처리하세요.
 - 전체 어휘 수준 {target_level}등급 이하를 목표로 하세요.
 - 원문의 사실·정보·논조를 정확히 유지하세요.
 - 어휘만 조정하고 문장 구조는 최대한 유지하세요.
-
-【작업 1-1: 변환 표시】
-리라이팅된 기사와 같은 내용을 한 번 더 쓰되, 원문보다 쉽게 바꾼 단어와 표현만 마크다운 굵게 표시(**표시**)하세요.
 - 조사, 어미, 문장부호는 굵게 표시하지 마세요.
 - 원문에 그대로 있던 단어는 표시하지 마세요.
 - 후보 단어를 그대로 쓰지 않았더라도 실제로 쉽게 바꾼 표현이면 표시하세요.
@@ -155,9 +153,7 @@ def rewrite_and_summarize(
 
 【출력 형식】(구분자를 반드시 그대로 사용)
 ===리라이팅===
-<리라이팅된 기사 전문>
-===변환표시===
-<바뀐 단어와 표현만 **굵게 표시**한 리라이팅 기사 전문>
+<쉽게 바꾼 단어를 **굵게 표시**한 리라이팅 기사 전문>
 ===요약===
 <요약문>
 ===핵심어휘===
@@ -176,12 +172,12 @@ def rewrite_and_summarize(
         raise RuntimeError(f"rewrite_and_summarize OpenAI 오류: {e}") from e
 
     content = response.choices[0].message.content.strip()
-    parts = re.split(r"===(?:리라이팅|변환표시|요약|핵심어휘)===", content)
+    parts = re.split(r"===(?:리라이팅|요약|핵심어휘)===", content)
 
-    rewritten = parts[1].strip() if len(parts) > 1 else content
-    convert_article = parts[2].strip() if len(parts) > 2 else build_convert_article_markdown(rewritten, replacement_map)
-    summary = parts[3].strip() if len(parts) > 3 else ""
-    keywords_str = parts[4].strip() if len(parts) > 4 else ""
+    convert_article = parts[1].strip() if len(parts) > 1 else content
+    rewritten = re.sub(r"\*\*(.+?)\*\*", r"\1", convert_article)
+    summary = parts[2].strip() if len(parts) > 2 else ""
+    keywords_str = parts[3].strip() if len(parts) > 3 else ""
     keywords = [k.strip() for k in keywords_str.split(",") if k.strip()]
 
     return {
